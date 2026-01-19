@@ -1,5 +1,5 @@
 
-# budoux-rs-phf
+# budoux-phf-rs
 
 Rust implementation of [BudouX](https://github.com/google/budoux), the machine learning-based line break organizer tool.
 
@@ -16,7 +16,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-budoux-rs-phf = "0.1"
+budoux-phf-rs = "0.1"
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ budoux-rs-phf = "0.1"
 ### Basic Usage
 
 ```rust
-use budoux::Parser;
+use budoux_phf_rs::Parser;
 
 fn main() {
     // Create a parser with Japanese model
@@ -42,7 +42,7 @@ fn main() {
 ### Other Languages
 
 ```rust
-use budoux::Parser;
+use budoux_phf_rs::Parser;
 
 fn main() {
     // Simplified Chinese
@@ -62,10 +62,10 @@ By default, all language models are included. You can select specific languages 
 ```toml
 [dependencies]
 # Include only Japanese
-budoux = { version = "0.1", default-features = false, features = ["ja"] }
+budoux_phf_rs = { version = "0.1", default-features = false, features = ["ja"] }
 
 # Include Japanese and Simplified Chinese
-budoux = { version = "0.1", default-features = false, features = ["ja", "zh_hans"] }
+budoux_phf_rs = { version = "0.1", default-features = false, features = ["ja", "zh_hans"] }
 ```
 
 Available features:
