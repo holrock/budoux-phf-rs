@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "budoux-rs-pfh"
+name = "budoux-phf"
 version = "0.1.0"
 dependencies = [
  "phf",
