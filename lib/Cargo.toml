@@ -2,6 +2,10 @@
 name = "budoux-phf-rs"
 version = "0.1.0"
 edition = "2024"
+description = "Rust implementation of BudouX"
+license = "Apache-2.0"
+repository = "https://github.com/holrock/budoux-phf-rs"
+readme = "../README.md"
 
 [dependencies]
 phf = { version = "0.13.1", features = ["macros"] }
