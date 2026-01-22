@@ -1,6 +1,8 @@
 use crate::model::Model;
 #[cfg(feature = "ja")]
 use crate::model_ja;
+#[cfg(feature = "ja_knbc")]
+use crate::model_ja_knbc;
 #[cfg(feature = "th")]
 use crate::model_th;
 #[cfg(feature = "zh_hans")]
@@ -17,6 +19,12 @@ impl Parser {
     pub fn japanese_parser() -> Parser {
         Parser {
             model: model_ja::new(),
+        }
+    }
+    #[cfg(feature = "ja_knbc")]
+    pub fn japanese_knbc_parser() -> Parser {
+        Parser {
+            model: model_ja_knbc::new(),
         }
     }
     #[cfg(feature = "zh_hans")]

@@ -87,7 +87,7 @@ fn main() {
     let output_dir = Path::new(&args[2]);
     for n in [
         "ja.json",
-        // "ja_knbc.json",
+        "ja_knbc.json",
         "th.json",
         "zh-hans.json",
         "zh-hant.json",
