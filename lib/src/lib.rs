@@ -1,3 +1,7 @@
+#![no_std]
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 mod model;
 pub use model::{Model, ScoreMap};
 #[cfg(feature = "ja")]

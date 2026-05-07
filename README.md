@@ -9,6 +9,7 @@ Rust implementation of [BudouX](https://github.com/google/budoux), the machine l
 - **Fast and efficient**: PHF provides O(1) lookup with minimal memory overhead
 - **No external dependencies at runtime**: All data is baked into the binary
 - **Multiple language support**: Japanese (ja), Simplified Chinese (zh-hans), Traditional Chinese (zh-hant), Thai (th)
+- **`no_std` support**: Works in `no_std` environments via `parse_with` (heap-free)
 
 ## Installation
 
@@ -27,14 +28,31 @@ budoux-phf-rs = "0.1"
 use budoux_phf_rs::Parser;
 
 fn main() {
-    // Create a parser with Japanese model
     let parser = Parser::japanese_parser();
-
     let text = "今日は天気です。";
-    let chunks: Vec<&str> = parser.parse(text);
 
+    // Returns Vec<&str> — requires the `alloc` or `std` feature (enabled by default)
+    let chunks: Vec<&str> = parser.parse(text);
     println!("{:?}", chunks);
     // => ["今日は", "天気です。"]
+}
+```
+
+### `no_std` Usage
+
+`parse_with` calls a closure for each chunk and requires no heap allocation:
+
+```rust
+use budoux_phf_rs::Parser;
+
+fn main() {
+    let parser = Parser::japanese_parser();
+    let text = "今日は天気です。";
+
+    parser.parse_with(text, |chunk| {
+        // called once per chunk
+        println!("{chunk}");
+    });
 }
 ```
 
@@ -90,7 +108,7 @@ fn main() {
 
 ## Feature Flags
 
-By default, all language models are included. You can select specific languages to reduce binary size:
+By default, all language models and the `std` feature are included. You can select specific languages to reduce binary size:
 ```toml
 [dependencies]
 # Include only Japanese
@@ -98,16 +116,25 @@ budoux_phf_rs = { version = "0.1", default-features = false, features = ["ja"] }
 
 # Include Japanese and Simplified Chinese
 budoux_phf_rs = { version = "0.1", default-features = false, features = ["ja", "zh_hans"] }
+
+# no_std with alloc (e.g. embedded with a global allocator)
+budoux_phf_rs = { version = "0.1", default-features = false, features = ["alloc", "ja"] }
+
+# no_std without alloc — only parse_with is available
+budoux_phf_rs = { version = "0.1", default-features = false, features = ["ja"] }
 ```
 
 Available features:
 
-| Feature | Language | Description |
-|---------|----------|-------------|
-| `ja` | Japanese | Japanese model |
-| `zh_hans` | Simplified Chinese | Simplified Chinese model |
-| `zh_hant` | Traditional Chinese | Traditional Chinese model |
-| `th` | Thai | Thai model |
+| Feature | Description |
+|---------|-------------|
+| `std` | Enable std support (implies `alloc`, enabled by default) |
+| `alloc` | Enable `parse()` returning `Vec` via the `alloc` crate |
+| `ja` | Japanese model |
+| `ja_knbc` | Japanese model (KNBC) |
+| `zh_hans` | Simplified Chinese model |
+| `zh_hant` | Traditional Chinese model |
+| `th` | Thai model |
 
 ## Build model
 ```shell
