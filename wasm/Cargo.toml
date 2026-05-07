@@ -1,0 +1,22 @@
+[package]
+name = "budoux-phf-rs-wasm"
+version = "0.1.0"
+edition = "2024"
+description = "WASM bindings for budoux-phf-rs"
+license = "Apache-2.0"
+repository = "https://github.com/holrock/budoux-phf-rs"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+budoux-phf-rs = { path = "../lib", default-features = false, features = ["alloc"] }
+wasm-bindgen = "0.2"
+
+[features]
+default = ["ja", "th", "zh_hans", "zh_hant"]
+ja = ["budoux-phf-rs/ja"]
+ja_knbc = ["budoux-phf-rs/ja_knbc"]
+th = ["budoux-phf-rs/th"]
+zh_hans = ["budoux-phf-rs/zh_hans"]
+zh_hant = ["budoux-phf-rs/zh_hant"]
