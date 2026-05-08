@@ -12,18 +12,30 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v6
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+    - name: Validate version format
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+      run: |
+        if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Invalid version format: '$VERSION'. Expected X.Y.Z (e.g. 1.2.3)"
+          exit 1
+        fi
+    - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
     - name: Update Cargo.toml version
-      run: sed -i "s/^version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" lib/Cargo.toml
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+      run: sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
     - name: Update Cargo.lock
       run: cargo update -p budoux-phf-rs
     - name: Commit and tag
+      env:
+        VERSION: ${{ github.event.inputs.version }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add lib/Cargo.toml Cargo.lock
-        git commit -m "bump version to ${{ github.event.inputs.version }}"
-        git tag "v${{ github.event.inputs.version }}"
+        git commit -m "bump version to $VERSION"
+        git tag "v$VERSION"
         git push origin HEAD
-        git push origin "v${{ github.event.inputs.version }}"
+        git push origin "v$VERSION"
