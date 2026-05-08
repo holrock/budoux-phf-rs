@@ -1,25 +1,48 @@
-name: Publish to crates.io
+name: Release
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g. 0.1.5)'
+        required: true
+
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     environment: release
     permissions:
+      contents: write
       id-token: write
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-    - name: Check version matches tag
+    - name: Validate version format
+      env:
+        VERSION: ${{ github.event.inputs.version }}
       run: |
-        TAG_VERSION="${GITHUB_REF_NAME#v}"
-        CARGO_VERSION=$(grep '^version' lib/Cargo.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
-        if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-          echo "Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+        if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "Invalid version format: '$VERSION'. Expected X.Y.Z (e.g. 1.2.3)"
           exit 1
         fi
     - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
-    - run: cargo test --package budoux-phf-rs
+    - name: Update Cargo.toml version
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+      run: sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
+    - name: Update Cargo.lock
+      run: cargo update -p budoux-phf-rs
+    - name: Run tests
+      run: cargo test --package budoux-phf-rs
+    - name: Commit and tag
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add lib/Cargo.toml Cargo.lock
+        git commit -m "bump version to $VERSION"
+        git tag "v$VERSION"
+        git push origin HEAD
+        git push origin "v$VERSION"
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
     - run: cargo publish --package budoux-phf-rs
