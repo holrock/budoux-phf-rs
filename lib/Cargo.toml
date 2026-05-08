@@ -8,7 +8,7 @@ repository = "https://github.com/holrock/budoux-phf-rs"
 readme = "../README.md"
 
 [dependencies]
-phf = { version = "0.13.1", features = ["macros"] }
+phf = { version = "0.13.1", default-features = false }
 
 [features]
 default = ["std", "ja", "th", "zh_hans", "zh_hant"]
