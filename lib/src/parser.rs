@@ -234,7 +234,11 @@ mod tests_parse_with {
     #[test]
     fn test_parse_with_japanese() {
         let p = Parser::japanese_parser();
-        check(&p, "今日はとても良い天気です。", &["今日は", "とても", "良い", "天気です。"]);
+        check(
+            &p,
+            "今日はとても良い天気です。",
+            &["今日は", "とても", "良い", "天気です。"],
+        );
         check(&p, "雀の宿", &["雀の", "宿"]);
         check(&p, "", &[]);
     }
@@ -270,11 +274,25 @@ mod tests_parse_with {
         };
         let model = crate::model::Model {
             total_score: 0,
-            uw1: &F, uw2: &F, uw3: &F, uw4: &F, uw5: &F, uw6: &F,
-            bw1: &F, bw2: &F, bw3: &F,
-            tw1: &F, tw2: &F, tw3: &F, tw4: &F,
+            uw1: &F,
+            uw2: &F,
+            uw3: &F,
+            uw4: &F,
+            uw5: &F,
+            uw6: &F,
+            bw1: &F,
+            bw2: &F,
+            bw3: &F,
+            tw1: &F,
+            tw2: &F,
+            tw3: &F,
+            tw4: &F,
         };
-        check(&Parser::new(model), "今日は天気です。", &["今日は天気です。"]);
+        check(
+            &Parser::new(model),
+            "今日は天気です。",
+            &["今日は天気です。"],
+        );
     }
 }
 
@@ -317,7 +335,7 @@ mod tests {
             "コントロールできない▁ほど▁感情移入してしまう",
             "いつも▁甘えがちに▁なる",
             "存在が▁浮かび▁上がった。",
-            "雀の▁宿"
+            "雀の▁宿",
         ];
         let p = Parser::japanese_parser();
         for d in td {

@@ -1,5 +1,5 @@
-use wasm_bindgen::prelude::*;
 use budoux_phf_rs::Parser;
+use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "ja")]
 #[wasm_bindgen]
