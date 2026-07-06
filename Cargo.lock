@@ -4,14 +4,14 @@ version = 4
 
 [[package]]
 name = "budoux-phf-rs"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "phf",
 ]
 
 [[package]]
 name = "budoux-phf-rs-wasm"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "budoux-phf-rs",
  "wasm-bindgen",
