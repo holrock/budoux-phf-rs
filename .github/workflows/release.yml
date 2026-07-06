@@ -5,6 +5,10 @@ on:
       version:
         description: 'New version (e.g. 0.1.5)'
         required: true
+      skip_publish:
+        description: 'Skip crates.io publish (for testing)'
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -29,14 +33,33 @@ jobs:
           exit 1
         fi
     - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install wasm-pack
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
     - name: Update Cargo.toml version
       env:
         VERSION: ${{ github.event.inputs.version }}
-      run: sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
+      run: |
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
+        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" wasm/Cargo.toml
     - name: Update Cargo.lock
-      run: cargo update -p budoux-phf-rs
+      run: |
+        cargo update -p budoux-phf-rs
+        cargo update -p budoux-phf-rs-wasm
     - name: Run tests
       run: cargo test --package budoux-phf-rs
+    - name: Build wasm (web)
+      run: wasm-pack build wasm --target web --out-dir pkg/web
+    - name: Build wasm (bundler)
+      run: wasm-pack build wasm --target bundler --out-dir pkg/bundler
+    - name: Package wasm artifacts
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+      run: |
+        cd wasm
+        zip -r "../budoux-phf-rs-wasm-web-v${VERSION}.zip" pkg/web
+        zip -r "../budoux-phf-rs-wasm-bundler-v${VERSION}.zip" pkg/bundler
     - name: Commit and tag
       env:
         VERSION: ${{ github.event.inputs.version }}
@@ -44,13 +67,25 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add lib/Cargo.toml Cargo.lock
+        git add lib/Cargo.toml wasm/Cargo.toml Cargo.lock
         git commit -m "bump version to $VERSION"
         git tag "v$VERSION"
         git push origin HEAD
         git push origin "v$VERSION"
+    - name: Create GitHub Release
+      env:
+        VERSION: ${{ github.event.inputs.version }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "v${VERSION}" \
+          --title "v${VERSION}" \
+          --generate-notes \
+          "budoux-phf-rs-wasm-web-v${VERSION}.zip" \
+          "budoux-phf-rs-wasm-bundler-v${VERSION}.zip"
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
+      if: ${{ !inputs.skip_publish }}
     - run: cargo publish --package budoux-phf-rs
+      if: ${{ !inputs.skip_publish }}
       env:
         CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
