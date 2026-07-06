@@ -136,6 +136,36 @@ Available features:
 | `zh_hant` | Traditional Chinese model |
 | `th` | Thai model |
 
+## WebAssembly
+
+Pre-built WASM packages are available as assets on the [GitHub Releases](https://github.com/holrock/budoux-phf-rs/releases) page.
+
+Two build targets are provided per release:
+
+| File | Target | Use case |
+|------|--------|----------|
+| `budoux-phf-rs-wasm-web-vX.Y.Z.zip` | `web` | Direct use in browsers without a bundler |
+| `budoux-phf-rs-wasm-bundler-vX.Y.Z.zip` | `bundler` | webpack / Vite / Rollup |
+
+### Browser (web target)
+
+```html
+<script type="module">
+  import init, { parse_japanese } from './budoux_phf_rs_wasm.js';
+  await init();
+  console.log(parse_japanese('今日は天気です。'));
+  // => ["今日は", "天気です。"]
+</script>
+```
+
+### Bundler (bundler target)
+
+```js
+import init, { parse_japanese } from './budoux_phf_rs_wasm.js';
+await init();
+console.log(parse_japanese('今日は天気です。'));
+```
+
 ## Build model
 ```shell
 $ cargo run -p codegen <path/to/budoux/budoux/models> lib/src/
