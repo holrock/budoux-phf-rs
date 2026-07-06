@@ -1,6 +1,6 @@
 [package]
 name = "budoux-phf-rs-wasm"
-version = "0.1.0"
+version = "0.1.7"
 edition = "2024"
 description = "WASM bindings for budoux-phf-rs"
 license = "Apache-2.0"
