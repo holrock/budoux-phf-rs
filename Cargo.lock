@@ -4,14 +4,14 @@ version = 4
 
 [[package]]
 name = "budoux-phf-rs"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "phf",
 ]
 
 [[package]]
 name = "budoux-phf-rs-wasm"
-version = "0.1.0"
+version = "0.1.7"
 dependencies = [
  "budoux-phf-rs",
  "wasm-bindgen",
@@ -31,7 +31,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "codegen"
-version = "0.1.0"
+version = "0.1.7"
 dependencies = [
  "phf",
  "phf_codegen",
