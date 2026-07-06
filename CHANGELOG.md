@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.7] - 2026-07-06
+## [0.1.8] - 2026-07-06
 
 ### Changed
 
@@ -15,6 +15,10 @@ All notable changes to this project will be documented in this file.
 ### Security
 
 - Set `persist-credentials: false` in GitHub Actions release workflow
+
+## [0.1.7]
+
+- intanal release
 
 ## [0.1.6] - 2026-05-08
 
