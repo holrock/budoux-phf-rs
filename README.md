@@ -191,6 +191,10 @@ console.log(parse_japanese('今日は天気です。'));
 $ cargo run -p codegen <path/to/budoux/budoux/models> lib/src/
 ```
 
+## Releasing
+
+Maintainer release process is documented in [RELEASING.md](RELEASING.md).
+
 ## License
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.

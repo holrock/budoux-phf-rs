@@ -1,10 +1,11 @@
 name: Release
 on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  # Manual re-run of a failed release: run against the existing tag ref.
   workflow_dispatch:
     inputs:
-      version:
-        description: 'New version (e.g. 0.1.5)'
-        required: true
       skip_publish:
         description: 'Skip crates.io publish (for testing)'
         type: boolean
@@ -15,21 +16,35 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: write
-      id-token: write
+      contents: write   # create GitHub Release (no source pushes)
+      id-token: write   # crates.io OIDC
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       with:
         persist-credentials: false
-    - run: gh auth setup-git
-      env:
-        GH_HOST: github.com
-    - name: Validate version format
-      env:
-        VERSION: ${{ github.event.inputs.version }}
+    - name: Derive and validate version from tag
       run: |
+        TAG="${GITHUB_REF_NAME}"
+        VERSION="${TAG#v}"
         if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-          echo "Invalid version format: '$VERSION'. Expected X.Y.Z (e.g. 1.2.3)"
+          echo "Not a release tag: '$TAG'. Expected vX.Y.Z. Run this workflow against a tag ref."
+          exit 1
+        fi
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        echo "TAG=$TAG" >> "$GITHUB_ENV"
+    - name: Verify Cargo.toml versions match the tag
+      run: |
+        lib_ver="$(grep -m1 '^version = ' lib/Cargo.toml | sed -E 's/^version = "(.*)"/\1/')"
+        wasm_ver="$(grep -m1 '^version = ' wasm/Cargo.toml | sed -E 's/^version = "(.*)"/\1/')"
+        if [ "$lib_ver" != "$VERSION" ] || [ "$wasm_ver" != "$VERSION" ]; then
+          echo "Version mismatch: tag=$VERSION lib=$lib_ver wasm=$wasm_ver"
+          echo "Bump both Cargo.toml files (scripts/release.sh) before tagging."
+          exit 1
+        fi
+    - name: Verify CHANGELOG has an entry for this version
+      run: |
+        if ! grep -qE "^## \[${VERSION//./\\.}\]" CHANGELOG.md; then
+          echo "CHANGELOG.md has no '## [$VERSION]' section."
           exit 1
         fi
     - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
@@ -37,23 +52,11 @@ jobs:
         targets: wasm32-unknown-unknown
     - name: Install wasm-pack
       run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-    - name: Update Cargo.toml version
-      env:
-        VERSION: ${{ github.event.inputs.version }}
-      run: |
-        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
-        sed -i "s/^version = \".*\"/version = \"$VERSION\"/" wasm/Cargo.toml
-    - name: Update Cargo.lock
-      run: |
-        cargo update -p budoux-phf-rs
-        cargo update -p budoux-phf-rs-wasm
     - name: Run tests
       run: cargo test --package budoux-phf-rs
     - name: Build wasm packages (full + per-language, web + bundler)
       run: scripts/build-wasm.sh
     - name: Package wasm artifacts
-      env:
-        VERSION: ${{ github.event.inputs.version }}
       run: |
         cd wasm
         for dir in pkg/*/; do
@@ -62,26 +65,24 @@ jobs:
           zip -r "../${asset}" "pkg/${variant}"
           echo "Packaged ${asset}"
         done
-    - name: Commit and tag
-      env:
-        VERSION: ${{ github.event.inputs.version }}
-        GH_TOKEN: ${{ github.token }}
+    - name: Extract release notes from CHANGELOG
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add lib/Cargo.toml wasm/Cargo.toml Cargo.lock
-        git diff --cached --quiet || git commit -m "bump version to $VERSION"
-        git tag "v$VERSION"
-        git push origin HEAD
-        git push origin "v$VERSION"
+        awk -v ver="$VERSION" '
+          $0 ~ "^## \\[" ver "\\]" { grab=1; next }
+          grab && /^## \[/ { exit }
+          grab { print }
+        ' CHANGELOG.md > release-notes.md
+        # Trim leading/trailing blank lines.
+        sed -i -e '/./,$!d' release-notes.md
+        echo "----- release notes -----"
+        cat release-notes.md
     - name: Create GitHub Release
       env:
-        VERSION: ${{ github.event.inputs.version }}
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "v${VERSION}" \
-          --title "v${VERSION}" \
-          --generate-notes \
+        gh release create "$TAG" \
+          --title "$TAG" \
+          --notes-file release-notes.md \
           budoux-phf-rs-wasm-*-v"${VERSION}".zip
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
