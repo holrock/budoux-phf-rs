@@ -142,10 +142,30 @@ Pre-built WASM packages are available as assets on the [GitHub Releases](https:/
 
 Two build targets are provided per release:
 
-| File | Target | Use case |
-|------|--------|----------|
-| `budoux-phf-rs-wasm-web-vX.Y.Z.zip` | `web` | Direct use in browsers without a bundler |
-| `budoux-phf-rs-wasm-bundler-vX.Y.Z.zip` | `bundler` | webpack / Vite / Rollup |
+| Target | Suffix | Use case |
+|--------|--------|----------|
+| `web` | `-web-` | Direct use in browsers without a bundler |
+| `bundler` | `-bundler-` | webpack / Vite / Rollup |
+
+For each target, both a **full** package (all languages) and **per-language** packages are published. Per-language packages are much smaller — choose one when you only need a single language:
+
+| File | Languages | Approx. `.wasm` size |
+|------|-----------|----------------------|
+| `budoux-phf-rs-wasm-<target>-vX.Y.Z.zip` | ja, th, zh-hans, zh-hant | ~276 KB |
+| `budoux-phf-rs-wasm-<target>-ja-vX.Y.Z.zip` | ja | ~53 KB |
+| `budoux-phf-rs-wasm-<target>-ja-knbc-vX.Y.Z.zip` | ja (KNBC) | ~49 KB |
+| `budoux-phf-rs-wasm-<target>-th-vX.Y.Z.zip` | th | ~74 KB |
+| `budoux-phf-rs-wasm-<target>-zh-hans-vX.Y.Z.zip` | zh-hans | ~118 KB |
+| `budoux-phf-rs-wasm-<target>-zh-hant-vX.Y.Z.zip` | zh-hant | ~118 KB |
+
+A per-language package only exports the matching `parse_*` function (e.g. the `ja` package exports only `parse_japanese`).
+
+To build the packages yourself:
+
+```shell
+$ scripts/build-wasm.sh          # full + per-language, web + bundler
+$ scripts/build-wasm.sh web      # only the web target
+```
 
 ### Browser (web target)
 

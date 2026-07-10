@@ -49,17 +49,19 @@ jobs:
         cargo update -p budoux-phf-rs-wasm
     - name: Run tests
       run: cargo test --package budoux-phf-rs
-    - name: Build wasm (web)
-      run: wasm-pack build wasm --target web --out-dir pkg/web
-    - name: Build wasm (bundler)
-      run: wasm-pack build wasm --target bundler --out-dir pkg/bundler
+    - name: Build wasm packages (full + per-language, web + bundler)
+      run: scripts/build-wasm.sh
     - name: Package wasm artifacts
       env:
         VERSION: ${{ github.event.inputs.version }}
       run: |
         cd wasm
-        zip -r "../budoux-phf-rs-wasm-web-v${VERSION}.zip" pkg/web
-        zip -r "../budoux-phf-rs-wasm-bundler-v${VERSION}.zip" pkg/bundler
+        for dir in pkg/*/; do
+          variant="$(basename "$dir")"
+          asset="budoux-phf-rs-wasm-${variant//_/-}-v${VERSION}.zip"
+          zip -r "../${asset}" "pkg/${variant}"
+          echo "Packaged ${asset}"
+        done
     - name: Commit and tag
       env:
         VERSION: ${{ github.event.inputs.version }}
@@ -80,8 +82,7 @@ jobs:
         gh release create "v${VERSION}" \
           --title "v${VERSION}" \
           --generate-notes \
-          "budoux-phf-rs-wasm-web-v${VERSION}.zip" \
-          "budoux-phf-rs-wasm-bundler-v${VERSION}.zip"
+          budoux-phf-rs-wasm-*-v"${VERSION}".zip
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
       if: ${{ !inputs.skip_publish }}
