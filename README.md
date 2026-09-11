@@ -1,6 +1,8 @@
 
 # budoux-phf-rs
 
+[![CI](https://github.com/holrock/budoux-phf-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/holrock/budoux-phf-rs/actions/workflows/ci.yml)
+
 Rust implementation of [BudouX](https://github.com/google/budoux), the machine learning-based line break organizer tool.
 
 ## Features
@@ -80,7 +82,8 @@ fn main() {
 use budoux_phf_rs::{Model, Parser, ScoreMap};
 
 // You can use `codegen` to convert from json to a model.
-const MY_MODEL: Mode = Model {
+// `total_score` must be the sum of every score in the maps below.
+const MY_MODEL: Model = Model {
     total_score: 2552,
     uw1: &UW1,
     uw2: &UW2,
@@ -96,19 +99,19 @@ const MY_MODEL: Mode = Model {
     tw3: &TW3,
     tw4: &TW4,
 };
-static UW1: ScoureMap = phf::Map { ...  };
-static UW2: ScoureMap = phf::Map { ...  };
+static UW1: ScoreMap = phf::Map { ...  };
+static UW2: ScoreMap = phf::Map { ...  };
 ...
 
 fn main() {
-    let parser = Parser { model: MY_MODEL };
+    let parser = Parser::new(MY_MODEL);
 }
 ```
 
 
 ## Feature Flags
 
-By default, all language models and the `std` feature are included. You can select specific languages to reduce binary size:
+By default, the `ja`, `th`, `zh_hans` and `zh_hant` models and the `std` feature are included (`ja_knbc` is opt-in). You can select specific languages to reduce binary size:
 ```toml
 [dependencies]
 # Include only Japanese
@@ -128,7 +131,7 @@ Available features:
 
 | Feature | Description |
 |---------|-------------|
-| `std` | Enable std support (implies `alloc`, enabled by default) |
+| `std` | Implies `alloc` (enabled by default). Reserved for future std-only APIs; the crate is `#![no_std]` either way today |
 | `alloc` | Enable `parse()` returning `Vec` via the `alloc` crate |
 | `ja` | Japanese model |
 | `ja_knbc` | Japanese model (KNBC) |

@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- CI workflow running fmt, clippy, tests and the feature-combination builds on
+  every push and pull request
+- Documentation comments on the public API, `keywords` / `categories` metadata
+  for crates.io, and `#![forbid(unsafe_code)]`
+
+### Changed
+
+- `codegen` now emits byte-for-byte identical output for identical input; it
+  used to iterate a `HashMap`, so regenerating the models reshuffled every
+  entry
+- `scripts/release.sh` no longer depends on GNU sed, and only rewrites the
+  version in the `[package]` section
+- Collapse the thirteen per-feature score lookup helpers into one
+
+### Deprecated
+
+- `Model::total_score()`, which duplicates the public `total_score` field.
+  Read the field instead; the method will be removed in the next major release
+
 ### Fixed
 
 - Apply the TW2/TW3/TW4 features at the last boundaries of a sentence, matching

@@ -1,0 +1,46 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      with:
+        persist-credentials: false
+    - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
+      with:
+        components: rustfmt, clippy
+        targets: wasm32-unknown-unknown
+    - name: Format
+      run: cargo fmt --all -- --check
+    - name: Clippy
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+    - name: Test (default features)
+      run: cargo test --package budoux-phf-rs
+    - name: Test (all features)
+      run: cargo test --package budoux-phf-rs --all-features
+    - name: Test (no_std + alloc)
+      run: cargo test --package budoux-phf-rs --no-default-features --features alloc,ja
+    - name: Build feature combinations
+      run: |
+        set -eux
+        # no_std without alloc: only parse_with is available.
+        for lang in ja ja_knbc th zh_hans zh_hant; do
+          cargo build --package budoux-phf-rs --no-default-features --features "$lang"
+        done
+        # No model bundled at all.
+        cargo build --package budoux-phf-rs --no-default-features
+    - name: Check wasm crate
+      run: cargo check --package budoux-phf-rs-wasm --target wasm32-unknown-unknown

@@ -6,6 +6,8 @@ description = "Rust implementation of BudouX"
 license = "Apache-2.0"
 repository = "https://github.com/holrock/budoux-phf-rs"
 readme = "../README.md"
+keywords = ["budoux", "line-break", "japanese", "wordwrap", "no-std"]
+categories = ["text-processing", "internationalization", "no-std"]
 
 [dependencies]
 phf = { version = "0.14.0", default-features = false }

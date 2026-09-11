@@ -1,31 +1,33 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::{File, read_dir};
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
+/// Model scores keyed by feature group (`UW1`, ..., `TW4`) and feature string.
+///
+/// `BTreeMap` rather than `HashMap`: the key order decides the order of the
+/// generated `phf` entries, so this keeps the output byte-for-byte stable
+/// across runs.
+type Scores = BTreeMap<String, BTreeMap<String, i32>>;
+
+const GROUPS: [&str; 13] = [
+    "UW1", "UW2", "UW3", "UW4", "UW5", "UW6", "BW1", "BW2", "BW3", "TW1", "TW2", "TW3", "TW4",
+];
+
 fn gen_code(fname: &Path, output_dir: &Path) {
     let file = File::open(fname).unwrap();
     let reader = BufReader::new(file);
-    let u: HashMap<String, HashMap<String, i32>> = serde_json::from_reader(reader).unwrap();
+    let u: Scores = serde_json::from_reader(reader).unwrap();
     let prefix = fname.file_stem().unwrap().to_str().unwrap();
     write_code(&prefix.replace("-", "_"), &u, output_dir);
 }
 
-fn write_code(lang: &str, val: &HashMap<String, HashMap<String, i32>>, output_dir: &Path) {
-    let total_score = val.get("UW1").unwrap().values().sum::<i32>()
-        + val.get("UW2").unwrap().values().sum::<i32>()
-        + val.get("UW3").unwrap().values().sum::<i32>()
-        + val.get("UW4").unwrap().values().sum::<i32>()
-        + val.get("UW5").unwrap().values().sum::<i32>()
-        + val.get("UW6").unwrap().values().sum::<i32>()
-        + val.get("BW1").unwrap().values().sum::<i32>()
-        + val.get("BW2").unwrap().values().sum::<i32>()
-        + val.get("BW3").unwrap().values().sum::<i32>()
-        + val.get("TW1").unwrap().values().sum::<i32>()
-        + val.get("TW2").unwrap().values().sum::<i32>()
-        + val.get("TW3").unwrap().values().sum::<i32>()
-        + val.get("TW4").unwrap().values().sum::<i32>();
+fn write_code(lang: &str, val: &Scores, output_dir: &Path) {
+    let total_score: i32 = GROUPS
+        .iter()
+        .map(|g| val.get(*g).unwrap().values().sum::<i32>())
+        .sum();
     let fname = output_dir.join(format!("model_{}.rs", lang));
     let mut out = BufWriter::new(File::create(fname).unwrap());
 
@@ -56,21 +58,19 @@ pub fn new() -> Model {{
     )
     .unwrap();
 
-    for n in vec![
-        "UW1", "UW2", "UW3", "UW4", "UW5", "UW6", "BW1", "BW2", "BW3", "TW1", "TW2", "TW3", "TW4",
-    ] {
+    for n in GROUPS {
         write_map(&mut out, n, val.get(n).unwrap());
     }
 }
 
-fn write_map(mut out: impl Write, name: &str, val: &HashMap<String, i32>) {
+fn write_map(mut out: impl Write, name: &str, val: &BTreeMap<String, i32>) {
     let mut map = phf_codegen::Map::new();
     let m = val
         .iter()
         .fold(&mut map, |acc, (k, v)| acc.entry(k, v.to_string()));
-    write!(
+    writeln!(
         out,
-        "static {}: ::phf::Map<&'static str, i16> = {};\n",
+        "static {}: ::phf::Map<&'static str, i16> = {};",
         name,
         m.build(),
     )
@@ -88,7 +88,7 @@ fn main() {
     for f in read_dir(model_dir).unwrap() {
         let f = f.unwrap().path();
         if f.extension().is_some_and(|s| s == "json") {
-            gen_code(&f, &output_dir);
+            gen_code(&f, output_dir);
         }
     }
 }
