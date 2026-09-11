@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the `std` feature now decides whether the crate links `std`.
+  It used to be a silent alias for `alloc` — the crate was `#![no_std]` either
+  way — so a bare-metal target built fine with default features. It no longer
+  does: `no_std` users must set `default-features = false`
+
+### Removed
+
+- **Breaking:** `Model::total_score()`, deprecated in 0.1.10. Read the public
+  `total_score` field instead
+
 ### Added
 
 - The release workflow can be started from the Actions tab against `main`, not
