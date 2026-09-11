@@ -22,9 +22,10 @@ All notable changes to this project will be documented in this file.
   version in the `[package]` section
 - Collapse the thirteen per-feature score lookup helpers into one
 
-### Removed
+### Deprecated
 
-- `Model::total_score()`; read the public `total_score` field instead
+- `Model::total_score()`, which duplicates the public `total_score` field.
+  Read the field instead; the method will be removed in the next major release
 
 ### Fixed
 
