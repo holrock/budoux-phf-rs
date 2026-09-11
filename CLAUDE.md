@@ -2,40 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this is
-
-A Rust port of [BudouX](https://github.com/google/budoux). The language models are
-compiled into the binary as `phf` perfect-hash maps by the `codegen` crate, so there is
-no dictionary to load at runtime. `lib/` is the published crate, `wasm/` wraps it for
-wasm-bindgen, `codegen/` is a dev-only tool.
-
 ## Commands
 
 ```bash
-# The CI matrix (.github/workflows/ci.yml). All of it must pass before pushing.
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --package budoux-phf-rs
-cargo test --package budoux-phf-rs --all-features
-cargo test --package budoux-phf-rs --no-default-features --features alloc,ja
-for lang in ja ja_knbc th zh_hans zh_hant; do
-  cargo build --package budoux-phf-rs --no-default-features --features "$lang"
-done
-cargo build --package budoux-phf-rs --no-default-features   # no_std, no alloc
-cargo check --package budoux-phf-rs-wasm --target wasm32-unknown-unknown
+# The CI matrix is .github/workflows/ci.yml — all of it must pass before pushing.
+# Regenerating models and building the WASM packages: see the README.
 
 # One test
 cargo test -p budoux-phf-rs parser::tests_parse_with::test_parse_with_sentence_end
 
-# Prove the no_std path really is no_std (compiling for the host does not)
+# Prove the no_std path really is no_std (compiling for the host does not, and
+# CI does not cover this)
 rustup target add thumbv7m-none-eabi
 cargo check -p budoux-phf-rs --no-default-features --features ja --target thumbv7m-none-eabi
-
-# Regenerate the model files from BudouX's JSON models
-cargo run -p codegen <path/to/budoux/budoux/models> lib/src/
-
-# WASM packages (needs wasm-pack; writes wasm/pkg/<target>[-<lang>])
-scripts/build-wasm.sh [web|bundler]
 ```
 
 ## The parser must stay bit-compatible with upstream BudouX
@@ -77,16 +56,9 @@ needs `alloc`. Without the gates the reduced-feature CI runs fail to compile.
 
 ## Releasing
 
-Full process in [RELEASING.md](RELEASING.md). The parts that bite:
+Follow [RELEASING.md](RELEASING.md). Two things it is worth knowing before you get there:
 
-- Put changes under `## [Unreleased]` in `CHANGELOG.md` **in the PR that makes them**.
-  Release notes are extracted from that section with no fallback, and the workflow
-  refuses to run if the section for the version is missing.
-- Cut the release with `scripts/release.sh X.Y.Z` — one human commit carries the version
-  bump and the changelog promotion. CI never edits tracked files.
-- Start the release by pushing the tag, or by running the *Release* workflow against
-  `main` (it derives the version from `lib/Cargo.toml` and creates the tag itself).
-  **Never create the tag from the Releases page**: that publishes an empty release, and
+- **Never create the tag from the Releases page.** That publishes an empty release, and
   because this repository has immutable releases enabled, it can never be given the WASM
   assets and its tag name can never be reused.
 - Pre-1.0, any breaking change means the next release is a minor bump (0.1.x → 0.2.0),
