@@ -57,7 +57,10 @@ bump_version() {
     in_package && /^version = / && !done { print "version = \"" ver "\""; done = 1; next }
     { print }
   ' "$file" > "$tmp"
-  mv "$tmp" "$file"
+  # Write back through the original file so its mode survives; `mv` from a
+  # mktemp file would leave it at 0600.
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
 }
 
 bump_version lib/Cargo.toml
@@ -80,7 +83,8 @@ awk -v ver="$VERSION" -v today="$TODAY" '
   }
   { print }
 ' "$CHANGELOG" > "$CHANGELOG_TMP"
-mv "$CHANGELOG_TMP" "$CHANGELOG"
+cat "$CHANGELOG_TMP" > "$CHANGELOG"
+rm -f "$CHANGELOG_TMP"
 echo "Promoted CHANGELOG [Unreleased] -> [$VERSION] - $TODAY"
 
 # One commit, one tag.
