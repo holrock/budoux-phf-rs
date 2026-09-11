@@ -3,7 +3,10 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
-  # Manual re-run of a failed release: run against the existing tag ref.
+  # Two manual uses:
+  #   - run against the default branch to cut the release its HEAD describes
+  #     (this job creates the tag, after the build has passed)
+  #   - run against an existing tag ref to re-run a failed release
   workflow_dispatch:
     inputs:
       skip_publish:
@@ -22,29 +25,59 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       with:
         persist-credentials: false
-    - name: Derive and validate version from tag
+    # On a tag ref the tag names the version. On a branch the checked-out
+    # commit does, never a workflow input: the tag is then derived from the
+    # files it will point at, so the two cannot disagree.
+    - name: Derive and validate the version
       run: |
-        TAG="${GITHUB_REF_NAME}"
-        VERSION="${TAG#v}"
+        if [ "$GITHUB_REF_TYPE" = tag ]; then
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+          source="tag $TAG"
+        else
+          VERSION="$(grep -m1 '^version = ' lib/Cargo.toml | sed -E 's/^version = "(.*)"/\1/')"
+          TAG="v$VERSION"
+          source="lib/Cargo.toml on $GITHUB_REF_NAME"
+        fi
         if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-          echo "Not a release tag: '$TAG'. Expected vX.Y.Z. Run this workflow against a tag ref."
+          echo "No X.Y.Z version from $source: '$VERSION'."
+          echo "Run this workflow against a vX.Y.Z tag, or against the default branch"
+          echo "once a 'release: vX.Y.Z' commit (scripts/release.sh) has been merged."
           exit 1
         fi
+        echo "Releasing $TAG, version taken from $source."
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
         echo "TAG=$TAG" >> "$GITHUB_ENV"
-    - name: Verify Cargo.toml versions match the tag
+    - name: Verify both Cargo.toml versions agree
       run: |
         lib_ver="$(grep -m1 '^version = ' lib/Cargo.toml | sed -E 's/^version = "(.*)"/\1/')"
         wasm_ver="$(grep -m1 '^version = ' wasm/Cargo.toml | sed -E 's/^version = "(.*)"/\1/')"
         if [ "$lib_ver" != "$VERSION" ] || [ "$wasm_ver" != "$VERSION" ]; then
-          echo "Version mismatch: tag=$VERSION lib=$lib_ver wasm=$wasm_ver"
-          echo "Bump both Cargo.toml files (scripts/release.sh) before tagging."
+          echo "Version mismatch: release=$VERSION lib=$lib_ver wasm=$wasm_ver"
+          echo "Bump both Cargo.toml files (scripts/release.sh) before releasing."
           exit 1
         fi
     - name: Verify CHANGELOG has an entry for this version
       run: |
         if ! grep -qE "^## \[${VERSION//./\\.}\]" CHANGELOG.md; then
           echo "CHANGELOG.md has no '## [$VERSION]' section."
+          exit 1
+        fi
+    # Only for the branch path; a tag ref is already pinned to a commit.
+    - name: Check the branch and that the tag is free
+      if: github.ref_type != 'tag'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        if [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
+          echo "Refusing to release from '$GITHUB_REF_NAME'; run this against $DEFAULT_BRANCH."
+          exit 1
+        fi
+        if sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq .object.sha 2>/dev/null)"; then
+          echo "Tag $TAG already exists, at $sha."
+          echo "Bump the version with scripts/release.sh and merge that first,"
+          echo "or re-run this workflow against the $TAG ref to retry that release."
           exit 1
         fi
     - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
@@ -79,6 +112,18 @@ jobs:
         sed -i -e '/./,$!d' release-notes.md
         echo "----- release notes -----"
         cat release-notes.md
+    # Deliberately after the build: a failed run leaves no stray tag behind.
+    # This is the only thing the job writes to the repository, and it writes a
+    # pointer to the commit it just built - never the commit's contents.
+    - name: Create the tag
+      if: github.ref_type != 'tag'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+          -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA"
+        echo "Created $TAG at $GITHUB_SHA."
+
     # The tag may already carry a release: cutting the tag from the Releases UI
     # creates one, and so does an earlier attempt of this job that got this far.
     # `gh release create` fails outright on that, which used to strand the

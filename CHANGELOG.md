@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- The release workflow can be started from the Actions tab against `main`, not
+  only by pushing a tag. It takes the version from `lib/Cargo.toml` at that
+  commit — there is no version input to mistype — runs the same checks, and
+  creates the tag itself once the build has passed
+
 ## [0.1.10] - 2026-09-11
 
 ### Added
