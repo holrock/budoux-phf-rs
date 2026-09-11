@@ -35,6 +35,14 @@ standard subsections (`Added`, `Changed`, `Fixed`, `Security`, …).
    git push && git push origin v0.1.9
    ```
 
+   > **Push the tag from the command line — do not cut it from the Releases
+   > page.** Creating a release in the UI creates the tag *and* an empty
+   > release. This repository has immutable releases enabled, so a published
+   > release can never be given assets afterwards: the workflow would find the
+   > release already there, and the WASM packages would have nowhere to go. The
+   > tag name cannot be freed by deleting the release either — an immutable
+   > release burns its tag name permanently.
+
 The tag push triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
 which:
 
@@ -51,6 +59,16 @@ the workflow manually from the Actions tab against the **tag ref** (`v0.1.9`).
 The `skip_publish` input skips the crates.io publish for testing. If the crate
 was already published, that step will fail — re-run only the parts that are
 still pending, or cut a new patch version.
+
+Note that a re-run reads the workflow from the tag it runs against, so a fix
+pushed to `main` does not reach a tag that was already cut. Fixes to
+`release.yml` only take effect from the next tag onward.
+
+If the release itself was already published (by the UI, or by an earlier
+attempt of the job), the workflow updates its notes and warns instead of
+failing, so the crates.io publish still runs. The WASM packages cannot be
+attached to it — build them locally with `scripts/build-wasm.sh` if they are
+needed for that version, or ship them with the next one.
 
 ## Notes
 
