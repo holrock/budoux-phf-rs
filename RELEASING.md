@@ -1,8 +1,11 @@
 # Releasing
 
 Version bumps and the changelog live in a **single human commit**; CI only
-builds, tests, and publishes. CI never writes to the repository, so there is no
-push race between a version bump and a changelog update.
+builds, tests, and publishes. CI never edits a tracked file, so there is no push
+race between a version bump and a changelog update. The one thing it may write
+is the tag, and only as a pointer to a commit whose version and changelog it has
+already verified — derived from that commit, never from an input that could
+disagree with it.
 
 ## During development
 
@@ -29,21 +32,33 @@ standard subsections (`Added`, `Changed`, `Fixed`, `Security`, …).
    git show
    ```
 
-3. Push the branch and the tag:
+3. Get the commit onto `main`, then start the release one of two ways.
+
+   **Push the tag:**
 
    ```bash
    git push && git push origin v0.1.9
    ```
 
-   > **Push the tag from the command line — do not cut it from the Releases
-   > page.** Creating a release in the UI creates the tag *and* an empty
-   > release. This repository has immutable releases enabled, so a published
-   > release can never be given assets afterwards: the workflow would find the
-   > release already there, and the WASM packages would have nowhere to go. The
-   > tag name cannot be freed by deleting the release either — an immutable
-   > release burns its tag name permanently.
+   **Or run the workflow against `main`:** from the Actions tab, *Release* →
+   *Run workflow* → branch `main`. The job reads the version out of
+   `lib/Cargo.toml` at that commit, runs the same checks, and creates the tag
+   itself once the build has passed. There is no version to type in, so the tag
+   cannot end up naming something other than what the commit contains. Use this
+   when you cannot push a tag from where you are — it is also the only path
+   available to an agent, whose credentials are scoped to branch refs.
 
-The tag push triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+   Either way the release job then waits on the `release` environment for
+   approval before it builds or publishes anything.
+
+   > **Do not cut the tag from the Releases page.** Creating a release in the UI
+   > creates the tag *and* an empty release. This repository has immutable
+   > releases enabled, so a published release can never be given assets
+   > afterwards: the workflow would find the release already there, and the WASM
+   > packages would have nowhere to go. The tag name cannot be freed by deleting
+   > the release either — an immutable release burns its tag name permanently.
+
+Both paths run [`.github/workflows/release.yml`](.github/workflows/release.yml),
 which:
 
 - verifies the tag matches the versions in both `Cargo.toml` files and that
@@ -63,6 +78,12 @@ still pending, or cut a new patch version.
 Note that a re-run reads the workflow from the tag it runs against, so a fix
 pushed to `main` does not reach a tag that was already cut. Fixes to
 `release.yml` only take effect from the next tag onward.
+
+Tag creation and the release live in the same job on purpose. Splitting them —
+one workflow to create the tag, another triggered by the tag push — does not
+work: [a tag pushed with `GITHUB_TOKEN` does not start another workflow
+run](https://docs.github.com/en/actions/concepts/security/github_token), so the
+release would never fire without adding a PAT or App token to the repository.
 
 If the release itself was already published (by the UI, or by an earlier
 attempt of the job), the workflow updates its notes and warns instead of
