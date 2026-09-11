@@ -34,6 +34,12 @@ All notable changes to this project will be documented in this file.
 - Fix a subtraction overflow panic (debug / `overflow-checks` builds) when
   parsing an input of exactly two characters
 
+### Security
+
+- Install `wasm-pack` from a pinned crates.io release in the release workflow,
+  instead of piping an unpinned installer script into `sh` in a job that holds
+  `contents: write` and the crates.io OIDC token
+
 ## [0.1.8] - 2026-07-06
 
 ### Changed

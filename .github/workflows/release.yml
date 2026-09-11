@@ -50,8 +50,11 @@ jobs:
     - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
       with:
         targets: wasm32-unknown-unknown
+    # Built from a pinned crates.io release rather than `curl … | sh`, so this
+    # job — which holds contents:write and the crates.io OIDC token — never
+    # executes a script fetched at run time.
     - name: Install wasm-pack
-      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      run: cargo install wasm-pack --locked --version 0.15.0
     - name: Run tests
       run: cargo test --package budoux-phf-rs
     - name: Build wasm packages (full + per-language, web + bundler)
