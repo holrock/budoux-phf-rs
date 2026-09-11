@@ -46,9 +46,22 @@ if ! grep -qE '^## \[Unreleased\]' "$CHANGELOG"; then
   exit 1
 fi
 
-# Bump versions.
-sed -i "s/^version = \".*\"/version = \"$VERSION\"/" lib/Cargo.toml
-sed -i "s/^version = \".*\"/version = \"$VERSION\"/" wasm/Cargo.toml
+# Bump the [package] version of a Cargo.toml in place.
+# awk rather than `sed -i`: the latter needs a backup suffix on BSD/macOS sed,
+# and "^version = " on its own would also match a dependency's version line.
+bump_version() {
+  local file="$1" tmp
+  tmp="$(mktemp)"
+  awk -v ver="$VERSION" '
+    /^\[/ { in_package = ($0 == "[package]") }
+    in_package && /^version = / && !done { print "version = \"" ver "\""; done = 1; next }
+    { print }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
+bump_version lib/Cargo.toml
+bump_version wasm/Cargo.toml
 echo "Updated lib/Cargo.toml and wasm/Cargo.toml to $VERSION"
 
 # Refresh Cargo.lock for both workspace crates.
@@ -56,7 +69,18 @@ cargo update -p budoux-phf-rs
 cargo update -p budoux-phf-rs-wasm
 
 # Promote [Unreleased] -> [VERSION] - date, and open a fresh [Unreleased] above it.
-sed -i "s/^## \[Unreleased\].*/## [Unreleased]\n\n## [$VERSION] - $TODAY/" "$CHANGELOG"
+CHANGELOG_TMP="$(mktemp)"
+awk -v ver="$VERSION" -v today="$TODAY" '
+  /^## \[Unreleased\]/ && !done {
+    print
+    print ""
+    print "## [" ver "] - " today
+    done = 1
+    next
+  }
+  { print }
+' "$CHANGELOG" > "$CHANGELOG_TMP"
+mv "$CHANGELOG_TMP" "$CHANGELOG"
 echo "Promoted CHANGELOG [Unreleased] -> [$VERSION] - $TODAY"
 
 # One commit, one tag.

@@ -1,4 +1,4 @@
-use crate::model::Model;
+use crate::model::{Model, ScoreMap};
 #[cfg(feature = "ja")]
 use crate::model_ja;
 #[cfg(feature = "ja_knbc")]
@@ -10,39 +10,56 @@ use crate::model_zh_hans;
 #[cfg(feature = "zh_hant")]
 use crate::model_zh_hant;
 
+/// Splits a sentence into semantic chunks using a [`Model`].
 pub struct Parser {
+    /// The model used for scoring boundaries.
     pub model: Model,
 }
 
 impl Parser {
+    /// Creates a parser from a custom model.
     pub fn new(model: Model) -> Parser {
         Self { model }
     }
 
+    /// Creates a parser using the bundled Japanese model.
+    ///
+    /// ```
+    /// use budoux_phf_rs::Parser;
+    ///
+    /// let parser = Parser::japanese_parser();
+    /// let mut chunks = Vec::new();
+    /// parser.parse_with("今日は天気です。", |chunk| chunks.push(chunk));
+    /// assert_eq!(chunks, ["今日は", "天気です。"]);
+    /// ```
     #[cfg(feature = "ja")]
     pub fn japanese_parser() -> Parser {
         Parser {
             model: model_ja::new(),
         }
     }
+    /// Creates a parser using the bundled Japanese (KNBC) model.
     #[cfg(feature = "ja_knbc")]
     pub fn japanese_knbc_parser() -> Parser {
         Parser {
             model: model_ja_knbc::new(),
         }
     }
+    /// Creates a parser using the bundled Simplified Chinese model.
     #[cfg(feature = "zh_hans")]
     pub fn simplified_chinese_parser() -> Parser {
         Parser {
             model: model_zh_hans::new(),
         }
     }
+    /// Creates a parser using the bundled Traditional Chinese model.
     #[cfg(feature = "zh_hant")]
     pub fn traditional_chinese_parser() -> Parser {
         Parser {
             model: model_zh_hant::new(),
         }
     }
+    /// Creates a parser using the bundled Thai model.
     #[cfg(feature = "th")]
     pub fn thai_parser() -> Parser {
         Parser {
@@ -50,13 +67,15 @@ impl Parser {
         }
     }
 
-    /// Parse `sentence` and invoke `callback` for each chunk.
-    /// Available in `no_std` environments (no heap allocation required).
+    /// Parses `sentence` and invokes `callback` once for each chunk, in order.
+    ///
+    /// This allocates nothing, so it is available in `no_std` builds without
+    /// the `alloc` feature. An empty `sentence` yields no chunks at all.
     pub fn parse_with<'a, F: FnMut(&'a str)>(&self, sentence: &'a str, mut callback: F) {
         if sentence.is_empty() {
             return;
         }
-        let total_score = -(self.model.total_score() / 2);
+        let base_score = -(self.model.total_score / 2);
 
         // Count total chars — needed for boundary checks in scoring.
         let len = sentence.chars().count();
@@ -93,73 +112,73 @@ impl Parser {
 
             let ci = |j: usize| ring[j % 8];
 
-            let mut score = total_score;
+            let mut score = base_score;
             if i > 2 {
-                score += self.get_score_uw1(&sentence[ci(i - 3)..ci(i - 2)]);
+                score += Self::score(self.model.uw1, &sentence[ci(i - 3)..ci(i - 2)]);
             }
             if i > 1 {
-                score += self.get_score_uw2(&sentence[ci(i - 2)..ci(i - 1)]);
+                score += Self::score(self.model.uw2, &sentence[ci(i - 2)..ci(i - 1)]);
             }
-            score += self.get_score_uw3(&sentence[ci(i - 1)..ci(i)]);
+            score += Self::score(self.model.uw3, &sentence[ci(i - 1)..ci(i)]);
 
             if i == len - 1 {
-                score += self.get_score_uw4(&sentence[ci(i)..]);
+                score += Self::score(self.model.uw4, &sentence[ci(i)..]);
             } else {
-                score += self.get_score_uw4(&sentence[ci(i)..ci(i + 1)]);
+                score += Self::score(self.model.uw4, &sentence[ci(i)..ci(i + 1)]);
             }
             if i < len - 1 {
                 if i + 1 >= len - 1 {
-                    score += self.get_score_uw5(&sentence[ci(i + 1)..]);
+                    score += Self::score(self.model.uw5, &sentence[ci(i + 1)..]);
                 } else {
-                    score += self.get_score_uw5(&sentence[ci(i + 1)..ci(i + 2)]);
+                    score += Self::score(self.model.uw5, &sentence[ci(i + 1)..ci(i + 2)]);
                 }
             }
             if i + 2 < len {
                 if i + 3 >= len {
-                    score += self.get_score_uw6(&sentence[ci(i + 2)..]);
+                    score += Self::score(self.model.uw6, &sentence[ci(i + 2)..]);
                 } else {
-                    score += self.get_score_uw6(&sentence[ci(i + 2)..ci(i + 3)]);
+                    score += Self::score(self.model.uw6, &sentence[ci(i + 2)..ci(i + 3)]);
                 }
             }
 
             if i > 1 {
-                score += self.get_score_bw1(&sentence[ci(i - 2)..ci(i)]);
+                score += Self::score(self.model.bw1, &sentence[ci(i - 2)..ci(i)]);
             }
             if i >= len - 1 {
-                score += self.get_score_bw2(&sentence[ci(i - 1)..]);
+                score += Self::score(self.model.bw2, &sentence[ci(i - 1)..]);
             } else {
-                score += self.get_score_bw2(&sentence[ci(i - 1)..ci(i + 1)]);
+                score += Self::score(self.model.bw2, &sentence[ci(i - 1)..ci(i + 1)]);
             }
             if i < len - 1 {
                 if i >= len - 2 {
-                    score += self.get_score_bw3(&sentence[ci(i)..]);
+                    score += Self::score(self.model.bw3, &sentence[ci(i)..]);
                 } else {
-                    score += self.get_score_bw3(&sentence[ci(i)..ci(i + 2)]);
+                    score += Self::score(self.model.bw3, &sentence[ci(i)..ci(i + 2)]);
                 }
             }
 
             if i > 2 {
-                score += self.get_score_tw1(&sentence[ci(i - 3)..ci(i)]);
+                score += Self::score(self.model.tw1, &sentence[ci(i - 3)..ci(i)]);
             }
             if i > 1 {
                 if i + 1 >= len {
-                    score += self.get_score_tw2(&sentence[ci(i - 2)..]);
+                    score += Self::score(self.model.tw2, &sentence[ci(i - 2)..]);
                 } else {
-                    score += self.get_score_tw2(&sentence[ci(i - 2)..ci(i + 1)]);
+                    score += Self::score(self.model.tw2, &sentence[ci(i - 2)..ci(i + 1)]);
                 }
             }
             if i + 1 < len {
                 if i + 2 >= len {
-                    score += self.get_score_tw3(&sentence[ci(i - 1)..]);
+                    score += Self::score(self.model.tw3, &sentence[ci(i - 1)..]);
                 } else {
-                    score += self.get_score_tw3(&sentence[ci(i - 1)..ci(i + 2)]);
+                    score += Self::score(self.model.tw3, &sentence[ci(i - 1)..ci(i + 2)]);
                 }
             }
             if i + 2 < len {
                 if i + 3 >= len {
-                    score += self.get_score_tw4(&sentence[ci(i)..]);
+                    score += Self::score(self.model.tw4, &sentence[ci(i)..]);
                 } else {
-                    score += self.get_score_tw4(&sentence[ci(i)..ci(i + 3)]);
+                    score += Self::score(self.model.tw4, &sentence[ci(i)..ci(i + 3)]);
                 }
             }
 
@@ -171,8 +190,10 @@ impl Parser {
         callback(&sentence[start_byte..]);
     }
 
-    /// Parse `sentence` and return a `Vec` of chunk slices.
-    /// Requires the `alloc` (or `std`) feature.
+    /// Parses `sentence` and returns its chunks as slices of the input.
+    ///
+    /// Requires the `alloc` (or `std`) feature. An empty `sentence` yields an
+    /// empty `Vec`.
     #[cfg(feature = "alloc")]
     pub fn parse<'a>(&self, sentence: &'a str) -> alloc::vec::Vec<&'a str> {
         let mut chunks = alloc::vec::Vec::new();
@@ -180,44 +201,8 @@ impl Parser {
         chunks
     }
 
-    fn get_score_uw1(&self, s: &str) -> i32 {
-        *self.model.uw1.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_uw2(&self, s: &str) -> i32 {
-        *self.model.uw2.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_uw3(&self, s: &str) -> i32 {
-        *self.model.uw3.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_uw4(&self, s: &str) -> i32 {
-        *self.model.uw4.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_uw5(&self, s: &str) -> i32 {
-        *self.model.uw5.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_uw6(&self, s: &str) -> i32 {
-        *self.model.uw6.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_bw1(&self, s: &str) -> i32 {
-        *self.model.bw1.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_bw2(&self, s: &str) -> i32 {
-        *self.model.bw2.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_bw3(&self, s: &str) -> i32 {
-        *self.model.bw3.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_tw1(&self, s: &str) -> i32 {
-        *self.model.tw1.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_tw2(&self, s: &str) -> i32 {
-        *self.model.tw2.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_tw3(&self, s: &str) -> i32 {
-        *self.model.tw3.get(s).unwrap_or(&0) as i32
-    }
-    fn get_score_tw4(&self, s: &str) -> i32 {
-        *self.model.tw4.get(s).unwrap_or(&0) as i32
+    fn score(map: &ScoreMap, s: &str) -> i32 {
+        *map.get(s).unwrap_or(&0) as i32
     }
 }
 
@@ -225,7 +210,7 @@ impl Parser {
 mod tests_parse_with {
     use super::*;
 
-    fn check<'a>(parser: &Parser, input: &'a str, expected: &[&str]) {
+    fn check(parser: &Parser, input: &str, expected: &[&str]) {
         let mut idx = 0;
         parser.parse_with(input, |chunk| {
             assert_eq!(chunk, expected[idx], "chunk {idx} mismatch for {input:?}");
@@ -331,6 +316,7 @@ mod tests {
     use alloc::vec;
     use alloc::vec::Vec;
 
+    #[cfg(feature = "ja")]
     #[test]
     fn test_parse() {
         let td = vec![
@@ -374,6 +360,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "zh_hans")]
     #[test]
     fn test_parser_zh_hans() {
         let parser_zh_hans = Parser::simplified_chinese_parser();
@@ -381,6 +368,7 @@ mod tests {
         assert_eq!(r, vec!["今天", "是", "晴天。"]);
     }
 
+    #[cfg(feature = "zh_hant")]
     #[test]
     fn test_parser_zh_hant() {
         let parser_zh_hant = Parser::traditional_chinese_parser();
@@ -388,6 +376,7 @@ mod tests {
         assert_eq!(r, vec!["今天", "是", "晴天。"]);
     }
 
+    #[cfg(feature = "th")]
     #[test]
     fn test_parser_th() {
         let parser_th = Parser::thai_parser();

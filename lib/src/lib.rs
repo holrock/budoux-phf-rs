@@ -1,4 +1,16 @@
-#![no_std]
+//! A Rust implementation of [BudouX](https://github.com/google/budoux), a
+//! machine learning based line break organizer.
+//!
+//! The language models are embedded at compile time as perfect hash maps, so
+//! there is no dictionary to load at runtime.
+//!
+//! Start from [`Parser`]: build one with a bundled model (for example
+//! [`Parser::japanese_parser`]) or with your own via [`Parser::new`], then call
+//! [`Parser::parse`] to get the chunks as a `Vec` (requires the `alloc` or
+//! `std` feature), or [`Parser::parse_with`] to receive them through a callback
+//! without allocating.
+#![cfg_attr(not(feature = "std"), no_std)]
+#![forbid(unsafe_code)]
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
