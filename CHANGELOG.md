@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Apply the TW2/TW3/TW4 features at the last boundaries of a sentence, matching
+  upstream BudouX. They were skipped or looked up with an over-long key near the
+  end of the input, which changed where short sentences were split
+  (e.g. `来ていた。` was returned as one chunk instead of `来て` / `いた。`)
+- Fix a subtraction overflow panic (debug / `overflow-checks` builds) when
+  parsing an input of exactly two characters
+
 ## [0.1.8] - 2026-07-06
 
 ### Changed

@@ -114,8 +114,8 @@ impl Parser {
                     score += self.get_score_uw5(&sentence[ci(i + 1)..ci(i + 2)]);
                 }
             }
-            if i < len - 2 {
-                if i + 2 >= len - 1 {
+            if i + 2 < len {
+                if i + 3 >= len {
                     score += self.get_score_uw6(&sentence[ci(i + 2)..]);
                 } else {
                     score += self.get_score_uw6(&sentence[ci(i + 2)..ci(i + 3)]);
@@ -141,18 +141,22 @@ impl Parser {
             if i > 2 {
                 score += self.get_score_tw1(&sentence[ci(i - 3)..ci(i)]);
             }
-            if i > 1 && i < len - 1 {
-                score += self.get_score_tw2(&sentence[ci(i - 2)..ci(i + 1)]);
+            if i > 1 {
+                if i + 1 >= len {
+                    score += self.get_score_tw2(&sentence[ci(i - 2)..]);
+                } else {
+                    score += self.get_score_tw2(&sentence[ci(i - 2)..ci(i + 1)]);
+                }
             }
-            if i < len - 2 {
-                if i + 2 >= len - 1 {
+            if i + 1 < len {
+                if i + 2 >= len {
                     score += self.get_score_tw3(&sentence[ci(i - 1)..]);
                 } else {
                     score += self.get_score_tw3(&sentence[ci(i - 1)..ci(i + 2)]);
                 }
             }
-            if i < len - 3 {
-                if i + 3 >= len - 1 {
+            if i + 2 < len {
+                if i + 3 >= len {
                     score += self.get_score_tw4(&sentence[ci(i)..]);
                 } else {
                     score += self.get_score_tw4(&sentence[ci(i)..ci(i + 3)]);
@@ -241,6 +245,31 @@ mod tests_parse_with {
         );
         check(&p, "雀の宿", &["雀の", "宿"]);
         check(&p, "", &[]);
+    }
+
+    #[cfg(feature = "ja")]
+    #[test]
+    fn test_parse_with_short_input() {
+        let p = Parser::japanese_parser();
+        check(&p, "あ", &["あ"]);
+        check(&p, "今日", &["今日"]);
+        check(&p, "ab", &["ab"]);
+        check(&p, "雀の宿", &["雀の", "宿"]);
+    }
+
+    // TW2/TW3/TW4 apply to the last boundaries of a sentence too; dropping
+    // them there changes where the sentence is split.
+    #[cfg(feature = "ja")]
+    #[test]
+    fn test_parse_with_sentence_end() {
+        let p = Parser::japanese_parser();
+        check(&p, "来ていた。", &["来て", "いた。"]);
+        check(&p, "もう来ていた。", &["もう", "来て", "いた。"]);
+        check(
+            &p,
+            "駒子はもう来ていた。",
+            &["駒子は", "もう", "来て", "いた。"],
+        );
     }
 
     #[cfg(feature = "zh_hans")]
