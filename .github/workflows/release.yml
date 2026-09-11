@@ -79,14 +79,25 @@ jobs:
         sed -i -e '/./,$!d' release-notes.md
         echo "----- release notes -----"
         cat release-notes.md
-    - name: Create GitHub Release
+    # Idempotent on purpose: the tag may already carry a release, either because
+    # it was cut from the Releases UI (which creates the tag) or because an
+    # earlier attempt of this job got this far. `gh release create` fails on an
+    # existing release, and that would strand the crates.io publish below.
+    - name: Create or update the GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "$TAG" \
-          --title "$TAG" \
-          --notes-file release-notes.md \
-          budoux-phf-rs-wasm-*-v"${VERSION}".zip
+        assets=(budoux-phf-rs-wasm-*-v"${VERSION}".zip)
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "Release $TAG already exists - updating it."
+          gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md
+          gh release upload "$TAG" "${assets[@]}" --clobber
+        else
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md \
+            "${assets[@]}"
+        fi
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
       if: ${{ !inputs.skip_publish }}
