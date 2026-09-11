@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-09-11
+
 ### Added
 
 - CI workflow running fmt, clippy, tests and the feature-combination builds on
