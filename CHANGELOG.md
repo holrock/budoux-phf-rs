@@ -4,18 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-
-- The release workflow updates an existing GitHub Release instead of failing on
-  it. `gh release create` aborts when the tag already carries a release — which
-  it does whenever the tag is cut from the Releases UI, or when an earlier
-  attempt of the job got that far — and that stranded the crates.io publish in
-  the step after it. Attaching the WASM packages to a release this job did not
-  create is now best-effort, since a published immutable release cannot take
-  new assets; the job warns and carries on rather than failing
-
-## [0.1.9] - 2026-09-11
-
 ### Added
 
 - CI workflow running fmt, clippy, tests and the feature-combination builds on
@@ -45,6 +33,13 @@ All notable changes to this project will be documented in this file.
   (e.g. `来ていた。` was returned as one chunk instead of `来て` / `いた。`)
 - Fix a subtraction overflow panic (debug / `overflow-checks` builds) when
   parsing an input of exactly two characters
+- The release workflow updates an existing GitHub Release instead of failing on
+  it. `gh release create` aborts when the tag already carries a release — which
+  it does whenever the tag is cut from the Releases UI, or when an earlier
+  attempt of the job got that far — and that stranded the crates.io publish in
+  the step after it. Attaching the WASM packages to a release this job did not
+  create is now best-effort, since a published immutable release cannot take
+  new assets; the job warns and carries on rather than failing
 
 ### Security
 
