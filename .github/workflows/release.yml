@@ -79,14 +79,33 @@ jobs:
         sed -i -e '/./,$!d' release-notes.md
         echo "----- release notes -----"
         cat release-notes.md
-    - name: Create GitHub Release
+    # The tag may already carry a release: cutting the tag from the Releases UI
+    # creates one, and so does an earlier attempt of this job that got this far.
+    # `gh release create` fails outright on that, which used to strand the
+    # crates.io publish below. Under immutable releases the assets of a
+    # published release can never be added to, so the recovery here is
+    # best-effort: always set the notes (title and notes stay editable), try the
+    # upload, and warn rather than fail if it is refused.
+    - name: Create or update the GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release create "$TAG" \
-          --title "$TAG" \
-          --notes-file release-notes.md \
-          budoux-phf-rs-wasm-*-v"${VERSION}".zip
+        assets=(budoux-phf-rs-wasm-*-v"${VERSION}".zip)
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "::warning::Release $TAG already exists - it was not created by this job."
+          gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md
+          if ! gh release upload "$TAG" "${assets[@]}" --clobber; then
+            echo "::warning::Could not attach the wasm packages to $TAG." \
+                 "A published immutable release cannot take new assets;" \
+                 "build them with scripts/build-wasm.sh, or cut the next tag" \
+                 "with 'git push origin <tag>' so this job creates the release."
+          fi
+        else
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md \
+            "${assets[@]}"
+        fi
     - uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
       id: auth
       if: ${{ !inputs.skip_publish }}
