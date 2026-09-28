@@ -31,6 +31,8 @@ jobs:
       run: cargo test --package budoux-phf-rs
     - name: Test (all features)
       run: cargo test --package budoux-phf-rs --all-features
+    - name: Test (train)
+      run: cargo test --package train
     - name: Test (no_std + alloc)
       run: cargo test --package budoux-phf-rs --no-default-features --features alloc,ja
     - name: Build feature combinations

@@ -10,6 +10,17 @@ All notable changes to this project will be documented in this file.
   only by pushing a tag. It takes the version from `lib/Cargo.toml` at that
   commit — there is no version input to mistype — runs the same checks, and
   creates the tag itself once the build has passed
+- `train` crate with a `budoux-train` binary: a Rust port of BudouX's training
+  pipeline (`encode_data.py`, `train.py` and `build_model.py`), so a custom
+  model can be trained from segmented text without Python or JAX. Every file
+  format is upstream's, so stages can be mixed with the Python scripts
+
+### Changed
+
+- `codegen` accepts a single model JSON as well as a directory, treats a
+  feature group missing from the JSON as empty (a model trained for few rounds
+  has no score in some groups), and fails with a clear message when a score
+  does not fit the parser's `i16`
 
 ## [0.1.10] - 2026-09-11
 
