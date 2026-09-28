@@ -11,6 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # One test
 cargo test -p budoux-phf-rs parser::tests_parse_with::test_parse_with_sentence_end
 
+# CI runs clippy from the latest stable, which can have lints your toolchain lacks
+cargo +stable clippy --workspace --all-targets --all-features -- -D warnings
+
 # Prove the no_std path really is no_std (compiling for the host does not, and
 # CI does not cover this)
 rustup target add thumbv7m-none-eabi
@@ -41,6 +44,16 @@ upstream's loop over a `Vec<char>` using `parser.model`'s public maps and compar
 
 The ring buffer in `parse_with` holds byte offsets for char indices `i-3..=i+3` in 8
 slots; the prefetch loop must keep filling through `i+3` for that to hold.
+
+## The training port must stay equivalent to upstream
+
+`train` transcribes BudouX's `encode_data.py`, `train.py` and `build_model.py`. Its unit
+tests are upstream's, and they stay green through changes that alter the trained model:
+the feature order from `extract_features` decides ties in `update`, and the order of
+floating-point sums decides near-ties. The way to check is a differential run against
+upstream with `JAX_ENABLE_X64=1` (upstream's default is `float32`, which diverges at the
+first near-tie): the weights file and log must be byte-identical. Keep every reduction in
+a fixed order, so the output does not depend on the thread count.
 
 ## Generated files
 

@@ -24,10 +24,24 @@ fn gen_code(fname: &Path, output_dir: &Path) {
 }
 
 fn write_code(lang: &str, val: &Scores, output_dir: &Path) {
-    let total_score: i32 = GROUPS
-        .iter()
-        .map(|g| val.get(*g).unwrap().values().sum::<i32>())
-        .sum();
+    // A freshly trained model can lack a group entirely: `build_model` only
+    // writes groups with a non-zero score.
+    let empty = BTreeMap::new();
+    let group = |g: &str| val.get(g).unwrap_or(&empty);
+    for (g, features) in val {
+        assert!(
+            GROUPS.contains(&g.as_str()),
+            "{lang}: unknown feature group {g}"
+        );
+        for (k, v) in features {
+            assert!(
+                i16::try_from(*v).is_ok(),
+                "{lang}: {g}:{k} = {v} does not fit the parser's i16 scores; \
+                 rebuild the model with a smaller --scale"
+            );
+        }
+    }
+    let total_score: i32 = GROUPS.iter().map(|g| group(g).values().sum::<i32>()).sum();
     let fname = output_dir.join(format!("model_{}.rs", lang));
     let mut out = BufWriter::new(File::create(fname).unwrap());
 
@@ -59,7 +73,7 @@ pub fn new() -> Model {{
     .unwrap();
 
     for n in GROUPS {
-        write_map(&mut out, n, val.get(n).unwrap());
+        write_map(&mut out, n, group(n));
     }
 }
 
@@ -80,12 +94,16 @@ fn write_map(mut out: impl Write, name: &str, val: &BTreeMap<String, i32>) {
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
-        println!("codegen model-dir output-dir");
+        println!("codegen <model-dir | model.json> output-dir");
         return;
     }
-    let model_dir = Path::new(&args[1]);
+    let model_path = Path::new(&args[1]);
     let output_dir = Path::new(&args[2]);
-    for f in read_dir(model_dir).unwrap() {
+    if model_path.is_file() {
+        gen_code(model_path, output_dir);
+        return;
+    }
+    for f in read_dir(model_path).unwrap() {
         let f = f.unwrap().path();
         if f.extension().is_some_and(|s| s == "json") {
             gen_code(&f, output_dir);

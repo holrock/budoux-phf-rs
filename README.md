@@ -194,6 +194,52 @@ console.log(parse_japanese('今日は天気です。'));
 $ cargo run -p codegen <path/to/budoux/budoux/models> lib/src/
 ```
 
+`codegen` also takes a single model JSON, e.g. one you trained yourself.
+
+## Train a custom model
+
+The `train` crate ports BudouX's training scripts ([`scripts/`](https://github.com/google/budoux/tree/main/scripts)) to Rust, so you can train a model without Python or JAX. The subcommands mirror the upstream scripts and read and write the same file formats, so any stage can be swapped for its Python counterpart.
+
+| Subcommand | Upstream script | Input → output |
+|------------|-----------------|----------------|
+| `encode` | `encode_data.py` | segmented text → encoded data |
+| `train` | `train.py` | encoded data → weights (AdaBoost) |
+| `build` | `build_model.py` | weights → model JSON |
+
+The source text marks segment boundaries with `▁` (U+2581); a line break also counts as a boundary:
+
+```text
+今日は▁良い▁天気ですね。
+明日も▁天気でしょう。
+```
+
+```shell
+$ cargo build --release -p train
+$ BT=target/release/budoux-train
+$ $BT encode train.txt -o encoded.txt
+$ $BT encode val.txt -o val_encoded.txt
+$ $BT train encoded.txt --val-data val_encoded.txt -o weights.txt --iter 10000
+$ $BT build weights.txt -o my_model.json
+$ cargo run -p codegen my_model.json <output-dir>   # writes model_my_model.rs
+```
+
+The options and defaults match upstream: `--feature-thres`, `--iter`, `--out-span`, `--log` for `train`, `--scale` for `encode` and `build`. Run `budoux-train <subcommand> --help` for details. `train` writes the weights file every `--out-span` rounds, so you can stop it at any point and still build a model from what it has written. It runs on every core; set `RAYON_NUM_THREADS` to limit that.
+
+Training computes in `f64`, and its weights and log are byte-identical to upstream's `train.py` run with `JAX_ENABLE_X64=1`. Upstream runs in `float32` by default, so a default run matches until two candidate features tie within `float32` rounding, then picks differently from that round on.
+
+To use the model, put the generated `model_my_model.rs` in your crate next to a `model` module that re-exports the types it refers to, and pass it to `Parser::new`:
+
+```rust
+mod model {
+    pub use budoux_phf_rs::{Model, ScoreMap};
+}
+mod model_my_model;
+
+let parser = budoux_phf_rs::Parser::new(model_my_model::new());
+```
+
+Your crate needs `phf` as a dependency. The parser stores scores as `i16`, so every score has to fit in ±32767. `codegen` stops with an error if one doesn't; if that happens, rebuild the model with a smaller `--scale`.
+
 ## Releasing
 
 Maintainer release process is documented in [RELEASING.md](RELEASING.md).
