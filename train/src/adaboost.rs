@@ -126,7 +126,7 @@ pub fn extract_features<R: BufRead>(reader: R, thres: i64) -> io::Result<Vec<Str
         Ok(())
     })?;
     // A stable sort keeps first-appearance order among equal counts.
-    counts.sort_by(|a, b| b.1.cmp(&a.1));
+    counts.sort_by_key(|a| std::cmp::Reverse(a.1));
     Ok(counts
         .into_iter()
         .filter(|(_, count)| *count > thres)
