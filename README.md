@@ -111,7 +111,7 @@ fn main() {
 
 ## Feature Flags
 
-By default, the `ja`, `th`, `zh_hans` and `zh_hant` models and the `std` feature are included (`ja_knbc` is opt-in). You can select specific languages to reduce binary size:
+By default, the `ja`, `th`, `zh_hans` and `zh_hant` models and the `std` feature are included (`ja_knbc` is opt-in). The crate itself needs nothing from `std`; disabling the feature makes it `no_std`. You can select specific languages to reduce binary size:
 ```toml
 [dependencies]
 # Include only Japanese
@@ -131,7 +131,7 @@ Available features:
 
 | Feature | Description |
 |---------|-------------|
-| `std` | Implies `alloc` (enabled by default). Reserved for future std-only APIs; the crate is `#![no_std]` either way today |
+| `std` | Link `std` (implies `alloc`, enabled by default). Turn it off and the crate is `no_std` |
 | `alloc` | Enable `parse()` returning `Vec` via the `alloc` crate |
 | `ja` | Japanese model |
 | `ja_knbc` | Japanese model (KNBC) |

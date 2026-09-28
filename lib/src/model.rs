@@ -46,13 +46,3 @@ pub struct Model {
     /// The three characters after the boundary.
     pub tw4: &'static ScoreMap,
 }
-
-impl Model {
-    /// Returns the [`total_score`](field@Self::total_score) field.
-    #[deprecated(
-        note = "read the public `total_score` field instead; this method will be removed in the next major release"
-    )]
-    pub fn total_score(&self) -> i32 {
-        self.total_score
-    }
-}

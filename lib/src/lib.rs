@@ -9,7 +9,7 @@
 //! [`Parser::parse`] to get the chunks as a `Vec` (requires the `alloc` or
 //! `std` feature), or [`Parser::parse_with`] to receive them through a callback
 //! without allocating.
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 #[cfg(feature = "alloc")]
 extern crate alloc;
