@@ -265,6 +265,10 @@ impl Booster {
 
     /// Runs one round (upstream's `update`), returning the chosen feature's
     /// index and the score added to it.
+    ///
+    /// # Panics
+    ///
+    /// If there are no features.
     pub fn update(&mut self) -> (usize, f64) {
         let (w, y) = (&self.w, &self.y);
         // res[m] = w.(Y ^ X[:, m]) = w.Y - (w * (2Y - 1)).X[:, m]: the weighted
@@ -359,6 +363,12 @@ pub fn fit(
     out: Outputs<'_>,
 ) -> io::Result<Vec<f64>> {
     assert!(out_span > 0, "out_span must be positive");
+    if features.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "no features to train on",
+        ));
+    }
     write!(
         out.log,
         "iter\ttrain_accuracy\ttrain_precision\ttrain_recall\ttrain_fscore"
@@ -546,6 +556,26 @@ mod tests {
         assert_eq!(best, 1);
         assert!(score > 0.0);
         assert!((booster.w.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn fit_without_features_is_an_error() {
+        let data = dense(&[&[], &[]], &[1, -1]);
+        let (mut weights, mut log, mut progress) = (Vec::new(), Vec::new(), Vec::new());
+        let err = fit(
+            &data,
+            None,
+            &[],
+            10,
+            1,
+            Outputs {
+                weights: &mut weights,
+                log: &mut log,
+                progress: &mut progress,
+            },
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     }
 
     #[test]

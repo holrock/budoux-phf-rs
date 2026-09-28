@@ -50,8 +50,10 @@ pub(crate) fn for_each_line<R: BufRead>(
             return Ok(());
         }
         let chunk = buf.strip_suffix(b"\n").unwrap_or(&buf);
-        // A `\r` ends a line too. `\r\n` leaves an empty piece behind, which is
-        // harmless: every caller skips blank lines.
+        // Drop the `\r` of a `\r\n` (or of a lone `\r` at the end of the file)
+        // first, so it does not leave an empty line behind and throw off the
+        // line numbers; any `\r` still left ends a line of its own.
+        let chunk = chunk.strip_suffix(b"\r").unwrap_or(chunk);
         for piece in chunk.split(|&b| b == b'\r') {
             lineno += 1;
             let line = std::str::from_utf8(piece).map_err(|e| {
@@ -87,7 +89,18 @@ mod tests {
             Ok(())
         })
         .unwrap();
-        let lines: Vec<_> = lines.into_iter().filter(|l| !l.is_empty()).collect();
         assert_eq!(lines, ["a", "b", "c", "d"]);
+    }
+
+    #[test]
+    fn line_numbers_with_crlf() {
+        let mut lines = Vec::new();
+        for_each_line("a\r\n\r\nb\r\rc\r".as_bytes(), |n, l| {
+            lines.push((n, l.to_string()));
+            Ok(())
+        })
+        .unwrap();
+        let expected = [(1, "a"), (2, ""), (3, "b"), (4, ""), (5, "c")];
+        assert_eq!(lines, expected.map(|(n, l)| (n, l.to_string())));
     }
 }

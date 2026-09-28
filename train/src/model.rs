@@ -194,6 +194,12 @@ mod tests {
     }
 
     #[test]
+    fn error_reports_the_line_number() {
+        let err = aggregate_scores("A:x\t1.0\r\nA:y\t2.0\r\nA:z\r\n".as_bytes()).unwrap_err();
+        assert_eq!(err.to_string(), "line 3: missing score");
+    }
+
+    #[test]
     fn aggregate_bad_rows() {
         assert!(aggregate_scores("AB:x\n".as_bytes()).is_err());
         assert!(aggregate_scores("ABx\t1.0\n".as_bytes()).is_err());
